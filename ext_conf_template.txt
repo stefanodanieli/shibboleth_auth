@@ -7,6 +7,9 @@ enableFE = 0
 # cat=basic/enable; type=boolean; label=Auto Import: Enable Auto Import of Frontend Users
 enableAutoImport = 0
 
+# cat=basic/enable; type=boolean; label=Auto Import: Enable Auto Import of Frontend Users
+enableAutoImportBE = 0
+
 # cat=basic/enable; type=boolean; label=BE_fetchUserIfNoSession: If this is enabled the service will always be called if there is no valid backend user session (needed for singleSignOn). If not then the service will only be called if the authentication process sees incoming data from a form.
 BE_fetchUserIfNoSession = 1
 
@@ -24,6 +27,9 @@ priority = 100
 
 # cat=basic; type=int+; label=Storage Pid: Storage Folder for Frontend Users
 storagePid = 0
+
+# cat=basic; type=int+; label=Storage Pid: Storage Folder for Frontend Users
+storagePidBE = 0
 
 # cat=basic; type=string; label=Shibboleth Login Handler
 loginHandler = /Shibboleth.sso/Login

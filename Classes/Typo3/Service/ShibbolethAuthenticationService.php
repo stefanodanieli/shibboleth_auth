@@ -69,9 +69,9 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
         }
 
         // bypass Shibboleth login if enableFE is 0
-        if (!($this->extensionConfiguration['enableFE']) && ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
-            parent::initAuth($mode, $loginData, $authInfo, $pObj);
-        }
+        //if (!($this->extensionConfiguration['enableFE']) && ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()) {
+        //    parent::initAuth($mode, $loginData, $authInfo, $pObj);
+       // }
 
         $this->login = $loginData;
         if (empty($this->login['uname']) && empty($this->remoteUser)) {
@@ -85,13 +85,16 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     public function getUser()
     {
         $user = false;
+
         if ($this->login['status'] == 'login' && $this->isShibbolethLogin() && empty($this->login['uname'])) {
             $user = $this->fetchUserRecord($this->remoteUser);
+
             if (!is_array($user) || empty($user)) {
                 if ($this->isLoginTypeFrontend(
                     ) && !empty($this->remoteUser) && $this->extensionConfiguration['enableAutoImport']) {
                     $this->importFrontendUser();
-                } else {
+                }
+                else {
                     $user = false;
                     // Failed login attempt (no username found)
                     $this->writelog(
@@ -103,12 +106,35 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                         [$this->authInfo['REMOTE_ADDR'], $this->authInfo['REMOTE_HOST'], $this->remoteUser]
                     );
                 }
+                if ($this->isLoginTypeBackend()){
+
+                    $this->writelog(
+                        255,
+                        3,
+                        3,
+                        1,
+                        "Cos'e l'auth Info e cosa memorizza 2 : " . $this->authInfo['loginType'],
+                        array("10053417@polimi.it"),
+                        "",
+                        0,
+                        0
+                    );
+
+                    $this->importBackendUser();
+                }
             } else {
                 if ($this->isLoginTypeFrontend() && $this->extensionConfiguration['enableAutoImport']) {
                     $this->updateFrontendUser();
                 }
+                if ($this->isLoginTypeBackend() && $this->extensionConfiguration['enableAutoImportBE']) {
+                    $this->updateBackendUser();
+                }
             }
             if ($this->isLoginTypeFrontend()) {
+                // The frontend user was updated, it should be fetched again
+                $user = $this->fetchUserRecord($this->remoteUser);
+            }
+            if ($this->isLoginTypeBackend()) {
                 // The frontend user was updated, it should be fetched again
                 $user = $this->fetchUserRecord($this->remoteUser);
             }
@@ -147,6 +173,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
      */
     public function authUser(array $user): int
     {
+        // user è un BE_USER object typo3 , mentre this->remoteUser è una stringa contenente il codice persona; $this->>getServerVar['mail'] restituisce invece i campi che arrivano da shibboleth (in questo caso, il campo mail).
         $OK = 100;
 
         if (Environment::isCli()) {
@@ -157,26 +184,26 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
             } else {
                 if ($this->isShibbolethLogin() && !empty($user) && ($this->remoteUser === $user[$this->authInfo['db_user']['username_column']])) {
                     $OK = 200;
-                    if ($user['lockToDomain'] && $user['lockToDomain'] !== $this->authInfo['HTTP_HOST']) {
-                        // Lock domain didn't match, so error:
-                        if ($this->writeAttemptLog) {
-                            $this->writelog(
-                                255,
-                                3,
-                                3,
-                                1,
-                                "Login attempt from %s (%s), username '%s', locked domain '%s' did not match '%s'!",
-                                [
-                                    $this->authInfo['REMOTE_ADDR'],
-                                    $this->authInfo['REMOTE_HOST'],
-                                    $user[$this->authInfo['db_user']['username_column']],
-                                    $user['lockToDomain'],
-                                    $this->authInfo['HTTP_HOST']
-                                ]
-                            );
-                        }
-                        $OK = 0;
-                    }
+//                    if ($user['lockToDomain'] && $user['lockToDomain'] !== $this->authInfo['HTTP_HOST']) {
+//                        // Lock domain didn't match, so error:
+//                        if ($this->writeAttemptLog) {
+//                            $this->writelog(
+//                                255,
+//                                3,
+//                                3,
+//                                1,
+//                                "Login attempt from %s (%s), username '%s', locked domain '%s' did not match '%s'!",
+//                                [
+//                                    $this->authInfo['REMOTE_ADDR'],
+//                                    $this->authInfo['REMOTE_HOST'],
+//                                    $user[$this->authInfo['db_user']['username_column']],
+//                                    $user['lockToDomain'],
+//                                    $this->authInfo['HTTP_HOST']
+//                                ]
+//                            );
+//                        }
+//                        $OK = 0;
+//                    }
                 }
             }
         }
@@ -206,6 +233,27 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     }
 
     /**
+     * Creates a new BE user from the current Shibboleth data
+     */
+    protected function importBackendUser(): void
+    {
+        $this->writelog(255, 3, 3, 2, 'Importing user %s.', [$this->remoteUser]);
+        $this->getDatabaseConnectionForBackendUsers()->insert(
+            $this->authInfo['db_user']['table'],
+            [
+                'crdate' => time(),
+                'tstamp' => time(),
+                'pid' => $this->extensionConfiguration['storagePidBE'],
+                'username' => $this->remoteUser,
+                'password' => $this->getRandomPassword(),
+                'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                'admin' => 1,
+            ]
+        );
+    }
+
+    /**
      * Updates an existing FE user with the current data provided by Shibboleth
      */
     protected function updateFrontendUser(): void
@@ -227,6 +275,31 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
             ]
         );
     }
+
+    /**
+     * Updates an existing BE user with the current data provided by Shibboleth
+     */
+    protected function updateBackendUser(): void
+    {
+        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
+        $this->getDatabaseConnectionForFrontendUsers()->update(
+            $this->authInfo['db_user']['table'], // table
+            [
+                'tstamp' => time(),
+                'username' => $this->remoteUser,
+                'password' => $this->getRandomPassword(),
+                'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                'admin' => 1,
+            ],
+            [
+                'username' => $this->remoteUser,
+                'pid' => $this->extensionConfiguration['storagePidBE'],
+            ]
+        );
+    }
+
+
 
     /**
      * Fetches all affiliations from the Shibboleth user
@@ -270,7 +343,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     {
         if (
             GeneralUtility::_GP('disableShibboleth') !== null
-            || $_COOKIE['be_disableShibboleth']
+            || isset($_COOKIE['be_disableShibboleth'])
         ) {
             $cookieSecure = (bool)$GLOBALS['TYPO3_CONF_VARS']['SYS']['cookieSecure'] && GeneralUtility::getIndpEnv('TYPO3_SSL');
             $cookie = new Cookie(
@@ -320,6 +393,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
         return null;
     }
 
+
     protected function getRandomPassword(): string
     {
         $randomPassword = GeneralUtility::makeInstance(Random::class)->generateRandomBytes(32);
@@ -332,7 +406,19 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
         return $this->authInfo['loginType'] === 'FE';
     }
 
+    protected function isLoginTypeBackend(): bool
+    {
+        return $this->authInfo['loginType'] === 'BE';
+    }
+
+
+
     protected function getDatabaseConnectionForFrontendUsers(): Connection
+    {
+        return $this->getDatabaseConnectionPool()->getConnectionForTable($this->authInfo['db_user']['table']);
+    }
+
+    protected function getDatabaseConnectionForBackendUsers(): Connection
     {
         return $this->getDatabaseConnectionPool()->getConnectionForTable($this->authInfo['db_user']['table']);
     }
