@@ -1,13 +1,13 @@
 <?php
 
-use Visol\ShibbolethAuth\Controller\FrontendLoginController;
+use Polimiacre\ShibbolethAuth\Controller\FrontendLoginController;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
-use Visol\ShibbolethAuth\Hook\UserAuthentication;
-use Visol\ShibbolethAuth\LoginProvider\ShibbolethLoginProvider;
+use Polimiacre\ShibbolethAuth\Hook\UserAuthentication;
+use Polimiacre\ShibbolethAuth\LoginProvider\ShibbolethLoginProvider;
 use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
-use Visol\ShibbolethAuth\Typo3\Service\ShibbolethAuthenticationService;
+use Polimiacre\ShibbolethAuth\Typo3\Service\ShibbolethAuthenticationService;
 defined('TYPO3') || die();
 
 (function ($extKey = 'shibboleth_auth') {

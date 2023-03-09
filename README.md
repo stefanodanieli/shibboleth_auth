@@ -42,7 +42,7 @@ It must be the first RewriteRule in htaccess.
 Installation
 ------------
 
-Install this extension via `composer require visol/shibboleth-auth` and activate the extension.
+Install this extension via `composer require polimiacre/shibboleth-auth` and activate the extension.
 
 After installing the extension, you have to activate the basic features in the extension's settings to be found in Admin Tools -> Settings -> Extension Configuration. 
 

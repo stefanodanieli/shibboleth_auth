@@ -1,8 +1,8 @@
 {
-  "name": "visol/shibboleth-auth",
+  "name": "polimiacre/shibboleth-auth",
   "type": "typo3-cms-extension",
   "description": "Shibboleth Authentication for TYPO3 CMS",
-  "homepage": "https://github.com/visol/shibboleth_auth",
+  "homepage": "https://github.com/stefanodanieli/shibboleth_auth",
   "license": [
     "GPL-2.0-or-later"
   ],
@@ -11,7 +11,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Visol\\ShibbolethAuth\\": "Classes/"
+      "Polimiacre\\ShibbolethAuth\\": "Classes/"
     }
   },
   "extra": {

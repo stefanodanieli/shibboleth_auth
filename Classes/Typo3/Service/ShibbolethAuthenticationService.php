@@ -1,6 +1,6 @@
 <?php
 
-namespace Visol\ShibbolethAuth\Typo3\Service;
+namespace Polimiacre\ShibbolethAuth\Typo3\Service;
 
 /**
  * This file is part of the TYPO3 CMS project.
