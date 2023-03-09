@@ -281,7 +281,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
      */
     protected function updateBackendUser(): void
     {
-        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
+        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [ var_dump($_SERVER) ]);
         $this->getDatabaseConnectionForFrontendUsers()->update(
             $this->authInfo['db_user']['table'], // table
             [
