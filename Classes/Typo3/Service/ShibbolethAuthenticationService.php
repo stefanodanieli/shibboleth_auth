@@ -289,7 +289,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 'username' => $this->remoteUser,
                 'password' => $this->getRandomPassword(),
                 'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
                 'admin' => 1,
             ],
             [
