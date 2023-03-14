@@ -238,19 +238,41 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     protected function importBackendUser(): void
     {
         $this->writelog(255, 3, 3, 2, 'Importing user %s.', [$this->remoteUser]);
-        $this->getDatabaseConnectionForBackendUsers()->insert(
-            $this->authInfo['db_user']['table'],
-            [
-                'crdate' => time(),
-                'tstamp' => time(),
-                'pid' => $this->extensionConfiguration['storagePidBE'],
-                'username' => $this->remoteUser,
-                'password' => $this->getRandomPassword(),
-                'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
-                'admin' => 1,
-            ]
-        );
+        $entitlement = $this->getServerVar($this->extensionConfiguration['entitlement']);
+        $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
+        $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
+
+        if (strpos($entitlement,$aunicaWebsiteUsers)){
+            $this->getDatabaseConnectionForBackendUsers()->insert(
+                $this->authInfo['db_user']['table'],
+                [
+                    'crdate' => time(),
+                    'tstamp' => time(),
+                    'pid' => $this->extensionConfiguration['storagePidBE'],
+                    'username' => $this->remoteUser,
+                    'password' => $this->getRandomPassword(),
+                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                    'admin' => 0,
+                ]
+            );
+        }
+        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
+            $this->getDatabaseConnectionForBackendUsers()->insert(
+                $this->authInfo['db_user']['table'],
+                [
+                    'crdate' => time(),
+                    'tstamp' => time(),
+                    'pid' => 0,
+                    'username' => $this->remoteUser,
+                    'password' => $this->getRandomPassword(),
+                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                    'admin' => 1,
+                ]
+            );
+
+        }
     }
 
     /**
@@ -281,23 +303,48 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
      */
     protected function updateBackendUser(): void
     {
-        $this->writelog(255, 3, 3, 2, 'Entitlement %s.', [ $_SERVER['entitlement']]);
         $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
-        $this->getDatabaseConnectionForFrontendUsers()->update(
-            $this->authInfo['db_user']['table'], // table
-            [
-                'tstamp' => time(),
-                'username' => $this->remoteUser,
-                'password' => $this->getRandomPassword(),
-                'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
-                'admin' => 1,
-            ],
-            [
-                'username' => $this->remoteUser,
-                'pid' => $this->extensionConfiguration['storagePidBE'],
-            ]
-        );
+        $entitlement = $this->getServerVar($this->extensionConfiguration['entitlement']);
+        $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
+        $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
+
+        if (strpos($entitlement,$aunicaWebsiteUsers)){
+            $this->getDatabaseConnectionForBackendUsers()->update(
+                $this->authInfo['db_user']['table'],
+                [
+                    'crdate' => time(),
+                    'tstamp' => time(),
+                    'pid' => $this->extensionConfiguration['storagePidBE'],
+                    'username' => $this->remoteUser,
+                    'password' => $this->getRandomPassword(),
+                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                    'admin' => 0,
+                ],
+                [
+                    'username' => $this->remoteUser,
+                    'pid' => $this->extensionConfiguration['storagePidBE'],
+                ]
+            );
+        }
+        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
+            $this->getDatabaseConnectionForBackendUsers()->update(
+                $this->authInfo['db_user']['table'],
+                [
+                    'crdate' => time(),
+                    'tstamp' => time(),
+                    'username' => $this->remoteUser,
+                    'password' => $this->getRandomPassword(),
+                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                    'admin' => 1,
+                ],
+                [
+                    'username' => $this->remoteUser,
+                    'pid' => 0,
+                ]
+            );
+        }
     }
 
 
