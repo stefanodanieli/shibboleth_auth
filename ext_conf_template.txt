@@ -28,9 +28,6 @@ priority = 100
 # cat=basic; type=int+; label=Storage Pid: Storage Folder for Frontend Users
 storagePid = 0
 
-# cat=basic; type=int+; label=Storage Pid: Storage Folder for Frontend Users
-storagePidBE = 0
-
 # cat=basic; type=string; label=Shibboleth Login Handler
 loginHandler = /Shibboleth.sso/Login
 
@@ -51,3 +48,14 @@ eduPersonAffiliation = affiliation
 
 # cat=basic; type=string; label=TYPO3 Login Template
 typo3LoginTemplate = EXT:shibboleth_auth/Resources/Private/Templates/BackendLogin/ShibbolethLogin.html
+
+# cat=AUNICA; type=string; label=AUNICA Website Admins group name (website_*nomesito*_admins)
+AunicaWebsiteAdmins =
+
+
+# cat=AUNICA; type=string; label=AUNICA Website Users group name (website_*nomesito*_users)
+AunicaWebsiteUsers =
+
+
+# cat=AUNICA; type=int+; label=Temporary Storage Folder Pid Website Users: (website_*nomesito*_users)
+storagePidBE = 0
