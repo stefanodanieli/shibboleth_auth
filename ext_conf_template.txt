@@ -49,13 +49,13 @@ eduPersonAffiliation = affiliation
 # cat=basic; type=string; label=TYPO3 Login Template
 typo3LoginTemplate = EXT:shibboleth_auth/Resources/Private/Templates/BackendLogin/ShibbolethLogin.html
 
-# cat=AUNICA; type=string; label=AUNICA Website Admins group name (website_*nomesito*_admins)
+# cat=aunica//010; type=string; label=AUNICA Website Admins group name
 AunicaWebsiteAdmins =
 
 
-# cat=AUNICA; type=string; label=AUNICA Website Users group name (website_*nomesito*_users)
+# cat=aunica//020; type=string; label=AUNICA Website Users group name
 AunicaWebsiteUsers =
 
 
-# cat=AUNICA; type=int+; label=Temporary Storage Folder Pid Website Users: (website_*nomesito*_users)
+# cat=aunica/030; type=int+; label=Temporary Storage Folder Pid Website Users
 storagePidBE = 0
