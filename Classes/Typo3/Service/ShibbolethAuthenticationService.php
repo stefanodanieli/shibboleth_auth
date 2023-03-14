@@ -238,7 +238,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     protected function importBackendUser(): void
     {
         $this->writelog(255, 3, 3, 2, 'Importing user %s.', [$this->remoteUser]);
-        $entitlement = $this->getServerVar($this->extensionConfiguration['entitlement']);
+        $entitlement = $this->getServerVar($this->extensionConfiguration['eduPersonAffiliation']);
         $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
         $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
 
@@ -304,7 +304,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     protected function updateBackendUser(): void
     {
         $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
-        $entitlement = $this->getServerVar($this->extensionConfiguration['entitlement']);
+        $entitlement = $this->getServerVar($this->extensionConfiguration['eduPersonAffiliation']);
         $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
         $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
 
