@@ -305,6 +305,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     {
         $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
         $entitlement = $this->getServerVar($this->extensionConfiguration['eduPersonAffiliation']);
+        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$entitlement]);
         $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
         $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
 
@@ -314,7 +315,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 [
                     'crdate' => time(),
                     'tstamp' => time(),
-                    'pid' => $this->extensionConfiguration['storagePidBE'],
+                    'pid' => 0,
                     'username' => $this->remoteUser,
                     'password' => $this->getRandomPassword(),
                     'email' => $this->getServerVar($this->extensionConfiguration['mail']),
@@ -323,7 +324,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 ],
                 [
                     'username' => $this->remoteUser,
-                    'pid' => $this->extensionConfiguration['storagePidBE'],
+                    'pid' => 0,
                 ]
             );
         }
