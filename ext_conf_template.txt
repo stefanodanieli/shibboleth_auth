@@ -44,7 +44,7 @@ mail = mail
 displayName = displayName
 
 # cat=basic; type=string; label=Shibboleth eduPersonAffiliation ServerVar
-eduPersonAffiliation = affiliation
+eduPersonAffiliation = entitlement
 
 # cat=basic; type=string; label=TYPO3 Login Template
 typo3LoginTemplate = EXT:shibboleth_auth/Resources/Private/Templates/BackendLogin/ShibbolethLogin.html

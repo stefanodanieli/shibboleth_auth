@@ -81,7 +81,8 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
             parent::initAuth($mode, $loginData, $authInfo, $pObj);
         }
     }
-
+    //questo metodo deriva dalla classe TYPO3\CMS\Core\Authentication\AuthenticationService, ed è tratto come esempio
+    // da questa documentazione : https://docs.typo3.org/m/typo3/reference-coreapi/main/en-us/ApiOverview/Services/UsingServices/ServiceChain.html
     public function getUser()
     {
         $user = false;
