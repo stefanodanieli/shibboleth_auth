@@ -30,6 +30,7 @@ defined('TYPO3') || die();
             'provider' => ShibbolethLoginProvider::class,
             'sorting' => 60,
             'icon-class' => 'fa-sign-in',
+            'iconIdentifier' => 'actions-key',
             'label' => 'LLL:EXT:shibboleth_auth/Resources/Private/Language/locallang.xlf:backend_login.header'
         ];
     }
