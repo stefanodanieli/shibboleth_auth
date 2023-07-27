@@ -33,11 +33,38 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 class ShibbolethAuthenticationService extends AbstractAuthenticationService
 {
 
-    protected string $extKey = 'shibboleth_auth';
+    protected $extKey = 'shibboleth_auth';
 
-    protected array $extensionConfiguration = [];
+    protected $extensionConfiguration = [];
 
-    protected ?string $remoteUser = '';
+    protected $remoteUser = '';
+
+    /**
+    * beUserRepository
+    *
+    * @var TYPO3\CMS\Beuser\Domain\Repository\BackendUserRepository
+     * @TYPO3\CMS\Extbase\Annotation\Inject
+     */
+    protected $beUserRepository = null;
+
+
+    /**
+     * persistenceManager
+     * @var \TYPO3\CMS\Extbase\Persistence\Generic\PersistenceManager
+     * @TYPO3\CMS\Extbase\Annotation\Inject
+     */
+    protected $persistenceManager;
+
+
+    /**
+     * @param TYPO3\CMS\Beuser\Domain\Repository\BackendUserRepository $beUserRepository
+     */
+    public function injectBackendUserRepository(\TYPO3\CMS\Beuser\Domain\Repository\BackendUserRepository $beUserRepository)
+    {
+        $this->beUserRepository = $beUserRepository;
+    }
+
+
 
     public function init(): bool
     {
@@ -51,6 +78,9 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
             $this->extensionConfiguration['displayName'] = 'REMOTE_USER';
         }
         $this->remoteUser = $_SERVER[$this->extensionConfiguration['remoteUser']];
+        $this->persistenceManager = GeneralUtility::makeInstance(PersistenceManager::class);
+        $this->beUserGroupRepository = GeneralUtility::makeInstance(\TYPO3\CMS\Beuser\Domain\Repository\BackendUserGroupRepository::class);
+        $this->beUserRepository = GeneralUtility::makeInstance(\TYPO3\CMS\Beuser\Domain\Repository\BackendUserRepository::class);
         return parent::init();
     }
 
@@ -108,19 +138,6 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                     );
                 }
                 if ($this->isLoginTypeBackend()){
-
-                    $this->writelog(
-                        255,
-                        3,
-                        3,
-                        1,
-                        "Cos'e l'auth Info e cosa memorizza 2 : " . $this->authInfo['loginType'],
-                        array("10053417@polimi.it"),
-                        "",
-                        0,
-                        0
-                    );
-
                     $this->importBackendUser();
                 }
             } else {
@@ -160,7 +177,6 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
             }
             exit;
         }
-
         return $user;
     }
 
@@ -238,27 +254,16 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
      */
     protected function importBackendUser(): void
     {
-        $this->writelog(255, 3, 3, 2, 'Importing user %s.', [$this->remoteUser]);
+        $this->writelog(255, 3, 3, 2, 'Importing BE user %s.', [$this->remoteUser]);
         $entitlement = $this->getServerVar($this->extensionConfiguration['eduPersonAffiliation']);
         $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
         $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
 
-        if (strpos($entitlement,$aunicaWebsiteUsers)){
-            $this->getDatabaseConnectionForBackendUsers()->insert(
-                $this->authInfo['db_user']['table'],
-                [
-                    'crdate' => time(),
-                    'tstamp' => time(),
-                    'pid' => $this->extensionConfiguration['storagePidBE'],
-                    'username' => $this->remoteUser,
-                    'password' => $this->getRandomPassword(),
-                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
-                    'admin' => 0,
-                ]
-            );
-        }
-        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
+        // by S.D : estraggo l'array di tutti nomi dei backend groups, poichè la lista è molto piu breve rispetto all'entitlement
+
+
+        if (strpos($entitlement,$aunicaWebsiteAdmins)){
+            //gruppo admin
             $this->getDatabaseConnectionForBackendUsers()->insert(
                 $this->authInfo['db_user']['table'],
                 [
@@ -272,8 +277,115 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                     'admin' => 1,
                 ]
             );
+        }
+        else {
+            // gruppo generico : a questo punto verifico se il gruppo esiste tra i gruppi BE
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_groups');
+            $result = $queryBuilder
+                ->select('uid','title')
+                ->from('be_groups')
+                ->execute();
+            $usergroup = "";
+            while ($row = $result->fetchAssociative()) {
+                // faccio il match tra i singoli nomi dei gruppi BE e il campo entitlement, che contiene una stringa con tutti i gruppi AUNICA
+                if (strpos($entitlement, $row['title'])) {
+                $usergroup = $usergroup . $row['uid'] . ",";
+                }
+            }
+            // elimino l'ultima virgola della sequenza (e.g. 1,3,5,7,) perchè non necessaria
+            $usergroup = rtrim($usergroup,",");
+            if ($usergroup !== ''){
+                $this->getDatabaseConnectionForBackendUsers()->insert(
+                    $this->authInfo['db_user']['table'],
+                    [
+                        'crdate' => time(),
+                        'tstamp' => time(),
+                        'pid' => 0,
+                        'username' => $this->remoteUser,
+                        'password' => $this->getRandomPassword(),
+                        'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                        'options' => 3,
+                        'workspace_id' => 0,
+                        'workspace_perms' => 1,
+                        'usergroup' => $row['uid'],
+                        'admin' => 0,
+                        'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
+                    ]
+                );
+            }
+        }
+
+
+
+        /* by S.D : commmento su vecchio codice
+
+        if (strpos($entitlement,$aunicaWebsiteUsers)){
+
+            $beuser = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\Polimi\ShibbolethAuth\Domain\Model\BackendUser::class);
+            $beuser->setUserName($this->remoteUser);
+            $beuser->setPassword($this->getRandomPassword());
+            $beuser->setPid(0);
+            $beuser->setEmail($this->getServerVar($this->extensionConfiguration['mail']));
+            $beuser->setOptions(3);
+            $beuser->setWorkspaceId(0);
+            $beuser->setWorkspacePerms(1);
+            $beuser->setFilePermissions("readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile");
+            if ($beuser->getBackendUserGroups() == null){
+                $objStorage = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Persistence\ObjectStorage::class);
+                $beuser->setBackendUserGroups($objStorage);
+            }
+            $beusergroup = $this->beUserGroupRepository->findOneByTitle($aunicaWebsiteUsers);
+            $beuser->getBackendUserGroups()->attach($beusergroup);
+            //$beuser->setBackendUserGroups(null);
+
+            // by :S.D : effettuo un'interrogazione lato database per estrarre l'UID di AunicaWebsiteUsers
+            $queryBuilderBeGroups =  $this->getDatabaseConnectionForBackendUserGroups();
+            $uidGroup = $queryBuilderBeGroups
+                ->select('uid')
+                ->from('be_groups')
+                ->where(
+                    $queryBuilderBeGroups->expr()->eq('title', $queryBuilderBeGroups->createNamedParameter($aunicaWebsiteUsers))
+                )
+                ->executeQuery()
+                ->fetchOne();
+
+            // inserisco il BE_USER
+            $this->getDatabaseConnectionForBackendUsers()->insert(
+                $this->authInfo['db_user']['table'],
+                [
+                    'crdate' => time(),
+                    'tstamp' => time(),
+                    'pid' => 0,
+                    'username' => $this->remoteUser,
+                    'password' => $this->getRandomPassword(),
+                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                    'options' => 3,
+                    'workspace_id' => 0,
+                    'workspace_perms' => 1,
+                    'usergroup' => $uidGroup,
+                    'admin' => 0,
+                    'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
+                ]
+            );
 
         }
+        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
+
+            $this->getDatabaseConnectionForBackendUsers()->insert(
+                $this->authInfo['db_user']['table'],
+                [
+                    'crdate' => time(),
+                    'tstamp' => time(),
+                    'pid' => 0,
+                    'username' => $this->remoteUser,
+                    'password' => $this->getRandomPassword(),
+                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                    'admin' => 1,
+                ]
+            );
+        }
+        */
     }
 
     /**
@@ -281,7 +393,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
      */
     protected function updateFrontendUser(): void
     {
-        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
+        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->getServerVar('cn')]);
         $this->getDatabaseConnectionForFrontendUsers()->update(
             $this->authInfo['db_user']['table'], // table
             [
@@ -289,7 +401,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 'username' => $this->remoteUser,
                 'password' => $this->getRandomPassword(),
                 'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                'name' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
                 'usergroup' => $this->getFEUserGroups(),
             ],
             [
@@ -304,13 +416,100 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
      */
     protected function updateBackendUser(): void
     {
+
+
         $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
         $entitlement = $this->getServerVar($this->extensionConfiguration['eduPersonAffiliation']);
-        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$entitlement]);
         $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
         $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
 
-        if (strpos($entitlement,$aunicaWebsiteUsers)){
+        if (strpos($entitlement,$aunicaWebsiteAdmins)){
+            //gruppo admin
+            $this->getDatabaseConnectionForBackendUsers()->update(
+                $this->authInfo['db_user']['table'],
+                [
+                    'crdate' => time(),
+                    'tstamp' => time(),
+                    'username' => $this->remoteUser,
+                    'password' => $this->getRandomPassword(),
+                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                    'admin' => 1,
+                ],
+                [
+                    'username' => $this->remoteUser,
+                    'pid' => 0,
+                ]
+            );
+        }
+        else {
+            // gruppo generico : a questo punto verifico se il gruppo esiste tra i gruppi BE
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_groups');
+            $result = $queryBuilder
+                ->select('uid','title')
+                ->from('be_groups')
+                ->execute();
+            $usergroup = "";
+            while ($row = $result->fetchAssociative()) {
+                // faccio il match tra i singoli nomi dei gruppi BE e il campo entitlement, che contiene una stringa con tutti i gruppi AUNICA
+                if (strpos($entitlement, $row['title'])) {
+                    $usergroup = $usergroup . $row['uid'] . ",";
+                }
+            }
+            // elimino l'ultima virgola della sequenza (e.g. 1,3,5,7,) perchè non necessaria
+            $usergroup = rtrim($usergroup,",");
+            if ($usergroup !== ''){
+                $this->getDatabaseConnectionForBackendUsers()->update(
+                    $this->authInfo['db_user']['table'],
+                    [
+                        'crdate' => time(),
+                        'tstamp' => time(),
+                        'pid' => 0,
+                        'username' => $this->remoteUser,
+                        'password' => $this->getRandomPassword(),
+                        'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+                        'options' => 3,
+                        'workspace_id' => 0,
+                        'workspace_perms' => 1,
+                        'usergroup' => $usergroup,
+                        'admin' => 0,
+                        'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
+                    ],
+                    [
+                        'username' => $this->remoteUser,
+                        'pid' => 0,
+                    ]
+                );
+            }
+            // non sei admin, non sei associato a nessun gruppo users, pertanto da disabilitare, anche se questo non avverrà mai in quanto l'IDP impedisce l'arrivo di utenze non associate
+            else{
+                $this->getDatabaseConnectionForBackendUsers()->update(
+                    $this->authInfo['db_user']['table'],
+                    [
+                        'deleted' => 1,
+                    ],
+                    [
+                        'username' => $this->remoteUser,
+                        'pid' => 0,
+                    ]
+                );
+            }
+        }
+
+
+/* by S.D : commento il vecchio codice
+        if (strpos($entitlement,$aunicaWebsiteUsers)) {
+            //by :S.D : effettuo un'interrogazione lato database per estrarre l'UID di AunicaWebsiteUsers
+            $queryBuilderBeGroups = $this->getDatabaseConnectionForBackendUserGroups();
+            $uidGroup = $queryBuilderBeGroups
+                ->select('uid')
+                ->from('be_groups')
+                ->where(
+                    $queryBuilderBeGroups->expr()->eq('title', $queryBuilderBeGroups->createNamedParameter($aunicaWebsiteUsers))
+                )
+                ->executeQuery()
+                ->fetchOne();
+
             $this->getDatabaseConnectionForBackendUsers()->update(
                 $this->authInfo['db_user']['table'],
                 [
@@ -320,8 +519,12 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                     'username' => $this->remoteUser,
                     'password' => $this->getRandomPassword(),
                     'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                    'options' => 3,
+                    'workspace_id' => 0,
+                    'workspace_perms' => 1,
+                    'usergroup' => $uidGroup,
                     'admin' => 0,
+                    'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
                 ],
                 [
                     'username' => $this->remoteUser,
@@ -411,7 +614,9 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
 
             return false;
         }
+
         $isShibbolethLogin = isset($_SERVER['AUTH_TYPE']) && (strtolower($_SERVER['AUTH_TYPE']) === 'shibboleth');
+
         if (!$isShibbolethLogin) {
             // In some cases, no AUTH_TYPE is set. We then fall back to find out if Shib_Session_ID is set
             $isShibbolethLogin = isset($_SERVER['Shib_Session_ID']) || isset($_SERVER['REDIRECT_Shib_Session_ID']);
@@ -471,6 +676,11 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     protected function getDatabaseConnectionForBackendUsers(): Connection
     {
         return $this->getDatabaseConnectionPool()->getConnectionForTable($this->authInfo['db_user']['table']);
+    }
+
+    protected function getDatabaseConnectionForBackendUserGroups(): QueryBuilder
+    {
+        return $this->getDatabaseConnectionPool()->getQueryBuilderForTable("be_groups");
     }
 
     /**

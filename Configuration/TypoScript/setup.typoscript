@@ -5,3 +5,12 @@ plugin.tx_shibbolethauth {
 		layoutRootPaths.10 = {$plugin.tx_shibbolethauth.view.layoutRootPath}
 	}
 }
+
+##############
+#### PAGE ####
+##############
+page {
+    includeCSS {
+        shibbolethAuth = EXT:shibboleth_auth/Resources/Public/Styles/shibboleth-auth.css
+    }
+}

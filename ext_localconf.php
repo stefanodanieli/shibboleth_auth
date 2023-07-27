@@ -8,6 +8,10 @@ use Polimiacre\ShibbolethAuth\LoginProvider\ShibbolethLoginProvider;
 use TYPO3\CMS\Extbase\Utility\ExtensionUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use Polimiacre\ShibbolethAuth\Typo3\Service\ShibbolethAuthenticationService;
+use Polimiacre\ShibbolethAuth\Backend\Controller\LogoutController as LogoutControllerXclass;
+use TYPO3\CMS\Backend\Controller\LogoutController;
+
+
 defined('TYPO3') || die();
 
 (function ($extKey = 'shibboleth_auth') {
@@ -81,4 +85,8 @@ defined('TYPO3') || die();
 
     // Use popup window to refresh login instead of the AJAX relogin
     $GLOBALS['TYPO3_CONF_VARS']['BE']['showRefreshLoginPopup'] = 1;
+
+    $GLOBALS['TYPO3_CONF_VARS']['SYS']['Objects'][LogoutController::class] = [
+        'className' => LogoutControllerXclass::class,
+    ];
 })();

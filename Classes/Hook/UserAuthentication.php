@@ -25,9 +25,12 @@ class UserAuthentication
         // Delete the Shibboleth session cookie
         foreach ($_COOKIE as $name => $value) {
             if (\str_starts_with($name, '_shibsession_')) {
-                setcookie($name, null, -1, '/');
+                $GLOBALS['BE_USER']->writelog(255, 2, 0, 2, "hook su cookie attivato" , array("hook su cookie attivato"), '', 0, 0);
+                setcookie($name, "", time() - 3600);
                 break;
             }
         }
+        setcookie("be_typo_user", "", -1, '/');
+
     }
 }
