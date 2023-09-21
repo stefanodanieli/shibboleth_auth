@@ -285,16 +285,16 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 ->select('uid','title')
                 ->from('be_groups')
                 ->execute();
-            $usergroup = "";
+            $usergroup_ids = "";
             while ($row = $result->fetchAssociative()) {
                 // faccio il match tra i singoli nomi dei gruppi BE e il campo entitlement, che contiene una stringa con tutti i gruppi AUNICA
                 if (strpos($entitlement, $row['title'])) {
-                $usergroup = $usergroup . $row['uid'] . ",";
+                $usergroup_ids = $usergroup_ids . $row['uid'] . ",";
                 }
             }
             // elimino l'ultima virgola della sequenza (e.g. 1,3,5,7,) perchè non necessaria
-            $usergroup = rtrim($usergroup,",");
-            if ($usergroup !== ''){
+            $usergroup = rtrim($usergroup_ids,",");
+            if ($usergroup_ids !== ''){
                 $this->getDatabaseConnectionForBackendUsers()->insert(
                     $this->authInfo['db_user']['table'],
                     [
@@ -307,7 +307,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                         'options' => 3,
                         'workspace_id' => 0,
                         'workspace_perms' => 1,
-                        'usergroup' => $row['uid'],
+                        'usergroup' => $usergroup_ids,
                         'admin' => 0,
                         'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
                     ]
@@ -316,76 +316,75 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
         }
 
 
+        // by S.D : commmento su vecchio codice
 
-        /* by S.D : commmento su vecchio codice
+//        if (strpos($entitlement,$aunicaWebsiteUsers)){
+//
+//            $beuser = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\Polimi\ShibbolethAuth\Domain\Model\BackendUser::class);
+//            $beuser->setUserName($this->remoteUser);
+//            $beuser->setPassword($this->getRandomPassword());
+//            $beuser->setPid(0);
+//            $beuser->setEmail($this->getServerVar($this->extensionConfiguration['mail']));
+//            $beuser->setOptions(3);
+//            $beuser->setWorkspaceId(0);
+//            $beuser->setWorkspacePerms(1);
+//            $beuser->setFilePermissions("readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile");
+//            if ($beuser->getBackendUserGroups() == null){
+//                $objStorage = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Persistence\ObjectStorage::class);
+//                $beuser->setBackendUserGroups($objStorage);
+//            }
+//            $beusergroup = $this->beUserGroupRepository->findOneByTitle($aunicaWebsiteUsers);
+//            $beuser->getBackendUserGroups()->attach($beusergroup);
+//            //$beuser->setBackendUserGroups(null);
+//
+//            // by :S.D : effettuo un'interrogazione lato database per estrarre l'UID di AunicaWebsiteUsers
+//            $queryBuilderBeGroups =  $this->getDatabaseConnectionForBackendUserGroups();
+//            $uidGroup = $queryBuilderBeGroups
+//                ->select('uid')
+//                ->from('be_groups')
+//                ->where(
+//                    $queryBuilderBeGroups->expr()->eq('title', $queryBuilderBeGroups->createNamedParameter($aunicaWebsiteUsers))
+//                )
+//                ->executeQuery()
+//                ->fetchOne();
+//
+//            // inserisco il BE_USER
+//            $this->getDatabaseConnectionForBackendUsers()->insert(
+//                $this->authInfo['db_user']['table'],
+//                [
+//                    'crdate' => time(),
+//                    'tstamp' => time(),
+//                    'pid' => 0,
+//                    'username' => $this->remoteUser,
+//                    'password' => $this->getRandomPassword(),
+//                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+//                    'options' => 3,
+//                    'workspace_id' => 0,
+//                    'workspace_perms' => 1,
+//                    'usergroup' => $uidGroup,
+//                    'admin' => 0,
+//                    'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
+//                ]
+//            );
+//
+//        }
+//        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
+//
+//            $this->getDatabaseConnectionForBackendUsers()->insert(
+//                $this->authInfo['db_user']['table'],
+//                [
+//                    'crdate' => time(),
+//                    'tstamp' => time(),
+//                    'pid' => 0,
+//                    'username' => $this->remoteUser,
+//                    'password' => $this->getRandomPassword(),
+//                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+//                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+//                    'admin' => 1,
+//                ]
+//            );
+//        }
 
-        if (strpos($entitlement,$aunicaWebsiteUsers)){
-
-            $beuser = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\Polimi\ShibbolethAuth\Domain\Model\BackendUser::class);
-            $beuser->setUserName($this->remoteUser);
-            $beuser->setPassword($this->getRandomPassword());
-            $beuser->setPid(0);
-            $beuser->setEmail($this->getServerVar($this->extensionConfiguration['mail']));
-            $beuser->setOptions(3);
-            $beuser->setWorkspaceId(0);
-            $beuser->setWorkspacePerms(1);
-            $beuser->setFilePermissions("readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile");
-            if ($beuser->getBackendUserGroups() == null){
-                $objStorage = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance(\TYPO3\CMS\Extbase\Persistence\ObjectStorage::class);
-                $beuser->setBackendUserGroups($objStorage);
-            }
-            $beusergroup = $this->beUserGroupRepository->findOneByTitle($aunicaWebsiteUsers);
-            $beuser->getBackendUserGroups()->attach($beusergroup);
-            //$beuser->setBackendUserGroups(null);
-
-            // by :S.D : effettuo un'interrogazione lato database per estrarre l'UID di AunicaWebsiteUsers
-            $queryBuilderBeGroups =  $this->getDatabaseConnectionForBackendUserGroups();
-            $uidGroup = $queryBuilderBeGroups
-                ->select('uid')
-                ->from('be_groups')
-                ->where(
-                    $queryBuilderBeGroups->expr()->eq('title', $queryBuilderBeGroups->createNamedParameter($aunicaWebsiteUsers))
-                )
-                ->executeQuery()
-                ->fetchOne();
-
-            // inserisco il BE_USER
-            $this->getDatabaseConnectionForBackendUsers()->insert(
-                $this->authInfo['db_user']['table'],
-                [
-                    'crdate' => time(),
-                    'tstamp' => time(),
-                    'pid' => 0,
-                    'username' => $this->remoteUser,
-                    'password' => $this->getRandomPassword(),
-                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                    'options' => 3,
-                    'workspace_id' => 0,
-                    'workspace_perms' => 1,
-                    'usergroup' => $uidGroup,
-                    'admin' => 0,
-                    'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
-                ]
-            );
-
-        }
-        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
-
-            $this->getDatabaseConnectionForBackendUsers()->insert(
-                $this->authInfo['db_user']['table'],
-                [
-                    'crdate' => time(),
-                    'tstamp' => time(),
-                    'pid' => 0,
-                    'username' => $this->remoteUser,
-                    'password' => $this->getRandomPassword(),
-                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
-                    'admin' => 1,
-                ]
-            );
-        }
-        */
     }
 
     /**
@@ -497,59 +496,59 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
         }
 
 
-/* by S.D : commento il vecchio codice
-        if (strpos($entitlement,$aunicaWebsiteUsers)) {
-            //by :S.D : effettuo un'interrogazione lato database per estrarre l'UID di AunicaWebsiteUsers
-            $queryBuilderBeGroups = $this->getDatabaseConnectionForBackendUserGroups();
-            $uidGroup = $queryBuilderBeGroups
-                ->select('uid')
-                ->from('be_groups')
-                ->where(
-                    $queryBuilderBeGroups->expr()->eq('title', $queryBuilderBeGroups->createNamedParameter($aunicaWebsiteUsers))
-                )
-                ->executeQuery()
-                ->fetchOne();
-
-            $this->getDatabaseConnectionForBackendUsers()->update(
-                $this->authInfo['db_user']['table'],
-                [
-                    'crdate' => time(),
-                    'tstamp' => time(),
-                    'pid' => 0,
-                    'username' => $this->remoteUser,
-                    'password' => $this->getRandomPassword(),
-                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                    'options' => 3,
-                    'workspace_id' => 0,
-                    'workspace_perms' => 1,
-                    'usergroup' => $uidGroup,
-                    'admin' => 0,
-                    'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
-                ],
-                [
-                    'username' => $this->remoteUser,
-                    'pid' => 0,
-                ]
-            );
-        }
-        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
-            $this->getDatabaseConnectionForBackendUsers()->update(
-                $this->authInfo['db_user']['table'],
-                [
-                    'crdate' => time(),
-                    'tstamp' => time(),
-                    'username' => $this->remoteUser,
-                    'password' => $this->getRandomPassword(),
-                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
-                    'admin' => 1,
-                ],
-                [
-                    'username' => $this->remoteUser,
-                    'pid' => 0,
-                ]
-            );
-        }
+// by S.D : commento il vecchio codice
+//        if (strpos($entitlement,$aunicaWebsiteUsers)) {
+//            //by :S.D : effettuo un'interrogazione lato database per estrarre l'UID di AunicaWebsiteUsers
+//            $queryBuilderBeGroups = $this->getDatabaseConnectionForBackendUserGroups();
+//            $uidGroup = $queryBuilderBeGroups
+//                ->select('uid')
+//                ->from('be_groups')
+//                ->where(
+//                    $queryBuilderBeGroups->expr()->eq('title', $queryBuilderBeGroups->createNamedParameter($aunicaWebsiteUsers))
+//                )
+//                ->executeQuery()
+//                ->fetchOne();
+//
+//            $this->getDatabaseConnectionForBackendUsers()->update(
+//                $this->authInfo['db_user']['table'],
+//                [
+//                    'crdate' => time(),
+//                    'tstamp' => time(),
+//                    'pid' => 0,
+//                    'username' => $this->remoteUser,
+//                    'password' => $this->getRandomPassword(),
+//                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+//                    'options' => 3,
+//                    'workspace_id' => 0,
+//                    'workspace_perms' => 1,
+//                    'usergroup' => $uidGroup,
+//                    'admin' => 0,
+//                    'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
+//                ],
+//                [
+//                    'username' => $this->remoteUser,
+//                    'pid' => 0,
+//                ]
+//            );
+//        }
+//        else if (strpos($entitlement,$aunicaWebsiteAdmins)){
+//            $this->getDatabaseConnectionForBackendUsers()->update(
+//                $this->authInfo['db_user']['table'],
+//                [
+//                    'crdate' => time(),
+//                    'tstamp' => time(),
+//                    'username' => $this->remoteUser,
+//                    'password' => $this->getRandomPassword(),
+//                    'email' => $this->getServerVar($this->extensionConfiguration['mail']),
+//                    //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+//                    'admin' => 1,
+//                ],
+//                [
+//                    'username' => $this->remoteUser,
+//                    'pid' => 0,
+//                ]
+//            );
+//        }
     }
 
 
