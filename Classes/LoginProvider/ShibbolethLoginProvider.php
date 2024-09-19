@@ -37,6 +37,7 @@ class ShibbolethLoginProvider implements LoginProviderInterface
      */
     public function render(StandaloneView $view, PageRenderer $pageRenderer, LoginController $loginController)
     {
+
         $extensionConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('shibboleth_auth');
 
         $template = 'EXT:shibboleth_auth/Resources/Private/Templates/BackendLogin/ShibbolethLogin.html';
@@ -45,13 +46,20 @@ class ShibbolethLoginProvider implements LoginProviderInterface
         }
         $view->setTemplatePathAndFilename(GeneralUtility::getFileAbsFileName($template));
 
-        $target = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST') . '/typo3';
+        //$target = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST') . '/typo3';
+
+        $target = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST') . '/Shibboleth.sso/Login?target=' . GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST') . '/typo3';
+
+        //$target = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST') . '/typo3';
         if ($extensionConfiguration['forceSSL'] && !GeneralUtility::getIndpEnv('TYPO3_SSL')) {
             $target = str_ireplace('http:', 'https:', $target);
         }
         $loginHandlerUrl = $extensionConfiguration['loginHandler'];
         $queryStringSeparator = !strpos($loginHandlerUrl, '?') ? '?' : '&';
         $shibbolethLoginUri = $loginHandlerUrl . $queryStringSeparator . 'target=' . rawurlencode($target);
+
+        $view->setLayoutRootPaths(['EXT:shibboleth_auth/Resources/Private/Layout']);
+
         $view->assign('shibbolethLoginUri', $shibbolethLoginUri);
     }
 }

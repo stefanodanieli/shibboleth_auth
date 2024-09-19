@@ -47,6 +47,13 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
      */
     protected $beUserRepository = null;
 
+    /**
+     * beUserGroupRepository
+     *
+     * @var \TYPO3\CMS\Beuser\Domain\Repository\BackendUserGroupRepository
+     * @TYPO3\CMS\Extbase\Annotation\Inject
+     */
+    protected $beUserGroupRepository = null;
 
     /**
      * persistenceManager
@@ -64,6 +71,14 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
         $this->beUserRepository = $beUserRepository;
     }
 
+
+    /**
+     * @param \TYPO3\CMS\Beuser\Domain\Repository\BackendUserGroupRepository $beUserGroupRepository
+     */
+    public function injectBackendUserGroupRepository(\TYPO3\CMS\Beuser\Domain\Repository\BackendUserGroupRepository $beUserGroupRepository)
+    {
+        $this->beUserGroupRepository = $beUserGroupRepository;
+    }
 
 
     public function init(): bool
@@ -128,14 +143,6 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 else {
                     $user = false;
                     // Failed login attempt (no username found)
-                    $this->writelog(
-                        255,
-                        3,
-                        3,
-                        2,
-                        "Login attempt from %s (%s), username '%s' not found!",
-                        [$this->authInfo['REMOTE_ADDR'], $this->authInfo['REMOTE_HOST'], $this->remoteUser]
-                    );
                 }
                 if ($this->isLoginTypeBackend()){
                     $this->importBackendUser();
@@ -275,6 +282,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                     'email' => $this->getServerVar($this->extensionConfiguration['mail']),
                     //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
                     'admin' => 1,
+                    'options' => 0,
                 ]
             );
         }
@@ -285,16 +293,16 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 ->select('uid','title')
                 ->from('be_groups')
                 ->execute();
-            $usergroup_ids = "";
+            $usergroup = "";
             while ($row = $result->fetchAssociative()) {
                 // faccio il match tra i singoli nomi dei gruppi BE e il campo entitlement, che contiene una stringa con tutti i gruppi AUNICA
                 if (strpos($entitlement, $row['title'])) {
-                $usergroup_ids = $usergroup_ids . $row['uid'] . ",";
+                $usergroup = $usergroup . $row['uid'] . ",";
                 }
             }
             // elimino l'ultima virgola della sequenza (e.g. 1,3,5,7,) perchè non necessaria
-            $usergroup = rtrim($usergroup_ids,",");
-            if ($usergroup_ids !== ''){
+            $usergroup = rtrim($usergroup,",");
+            if ($usergroup !== ''){
                 $this->getDatabaseConnectionForBackendUsers()->insert(
                     $this->authInfo['db_user']['table'],
                     [
@@ -307,7 +315,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                         'options' => 3,
                         'workspace_id' => 0,
                         'workspace_perms' => 1,
-                        'usergroup' => $usergroup_ids,
+                        'usergroup' => $usergroup,
                         'admin' => 0,
                         'file_permissions' => "readFolder,writeFolder,addFolder,renameFolder,moveFolder,deleteFolder,readFile,writeFile,addFile,renameFile,replaceFile,moveFile,copyFile,deleteFile",
                     ]
@@ -400,7 +408,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                 'username' => $this->remoteUser,
                 'password' => $this->getRandomPassword(),
                 'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
+                'name' => $this->getServerVar($this->extensionConfiguration['displayName']),
                 'usergroup' => $this->getFEUserGroups(),
             ],
             [
@@ -416,8 +424,6 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
     protected function updateBackendUser(): void
     {
 
-
-        $this->writelog(255, 3, 3, 2, 'Updating user %s.', [$this->remoteUser]);
         $entitlement = $this->getServerVar($this->extensionConfiguration['eduPersonAffiliation']);
         $aunicaWebsiteUsers = $this->extensionConfiguration['AunicaWebsiteUsers'];
         $aunicaWebsiteAdmins = $this->extensionConfiguration['AunicaWebsiteAdmins'];
@@ -434,6 +440,7 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                     'email' => $this->getServerVar($this->extensionConfiguration['mail']),
                     //'realName' => $this->getServerVar($this->extensionConfiguration['displayName']),
                     'admin' => 1,
+                    'options' => 0,
                 ],
                 [
                     'username' => $this->remoteUser,
@@ -467,7 +474,6 @@ class ShibbolethAuthenticationService extends AbstractAuthenticationService
                         'username' => $this->remoteUser,
                         'password' => $this->getRandomPassword(),
                         'email' => $this->getServerVar($this->extensionConfiguration['mail']),
-                        'options' => 3,
                         'workspace_id' => 0,
                         'workspace_perms' => 1,
                         'usergroup' => $usergroup,

@@ -3,6 +3,8 @@
 namespace Polimiacre\ShibbolethAuth\Hook;
 
 use TYPO3\CMS\Core\Utility\StringUtility;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\HttpUtility;
 
 /**
  * This file is part of the TYPO3 CMS project.
@@ -22,10 +24,12 @@ class UserAuthentication
 
     public function backendLogoutHandler()
     {
+        //HttpUtility::redirect($targetUrl);
         // Delete the Shibboleth session cookie
         foreach ($_COOKIE as $name => $value) {
             if (\str_starts_with($name, '_shibsession_')) {
                 $GLOBALS['BE_USER']->writelog(255, 2, 0, 2, "hook su cookie attivato" , array("hook su cookie attivato"), '', 0, 0);
+                setcookie($name, null, -1, '/');
                 setcookie($name, "", time() - 3600);
                 break;
             }

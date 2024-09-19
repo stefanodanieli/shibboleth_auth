@@ -1,3 +1,6 @@
+## (2023-06-12)
+[FORK] Fork from visol/shibboleth_auth
+
 ## 6.1.1 (2023-01-20)
 
 [BUGFIX] Apply HMAC-signing to login pid parameter
